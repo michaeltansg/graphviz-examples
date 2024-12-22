@@ -1,0 +1,77 @@
+digraph docker_services {
+
+    // NGINX Configuration
+    subgraph {
+        subgraph {
+            rank=same;
+            folder_nginx_conf [shape=folder, label="./nginx/nginx.conf"];
+            folder_proxy_conf [shape=folder, label="./nginx/proxy.conf"];
+            folder_conf_d [shape=folder, label="./nginx/conf.d"];
+            port_80 [shape=circle, label="80"];
+
+            // Ensure order of nodes
+            folder_nginx_conf -> folder_proxy_conf [style=invis];
+            folder_proxy_conf -> folder_conf_d [style=invis];
+            folder_conf_d -> port_80 [style=invis];
+        }
+
+        nginx [shape=component, label="nginx"];
+        folder_nginx_conf -> nginx [dir=both, style=dashed, label="/etc/nginx/nginx.conf"];
+        folder_proxy_conf -> nginx [dir=both, style=dashed, label="/etc/nginx/proxy.conf"];
+        folder_conf_d -> nginx [dir=both, style=dashed, label="/etc/nginx/conf.d"];
+        port_80 -> nginx;
+
+        subgraph {
+            folder_weaviate [shape=folder, label="./volumes/weaviate"];
+            weaviate [shape=component, label="weaviate"];
+            folder_weaviate -> weaviate [dir=both, style=dashed, label="/var/lib/weaviate"];
+        }
+    }
+
+    // Storage and App Configuration
+    subgraph {
+        folder_storage [shape=folder, label="./volumes/app/storage"];
+
+        // Ensure storage is positioned to the left
+        invisible_node [shape=point, style=invis];
+        invisible_node -> folder_storage [style=invis];
+
+        subgraph {
+            rank=same;
+            folder_redis [shape=folder, label="./volumes/redis/data"];
+            worker [shape=component, label="worker"];
+            api [shape=component, label="api"];
+            port_5432 [shape=circle, label="5432"];
+            folder_db [shape=folder, label="./volumes/db/data"];
+            web [shape=component, label="web"];
+
+            // Ensure order of nodes
+            folder_redis -> worker [style=invis];
+            worker -> api [style=invis];
+            api -> port_5432 [style=invis];
+            port_5432 -> folder_db [style=invis];
+            folder_db -> web [style=invis];
+        }
+
+        folder_storage -> worker [dir=both, style=dashed, label="/app/api/storage"];
+        folder_storage -> api [dir=both, style=dashed, label="/app/api/storage"];
+        folder_db -> db [dir=both, style=dashed, label="/var/lib/postgresql/data"];
+
+        subgraph {
+            rank=same;
+            redis [shape=component, label="redis"];
+            db [shape=component, label="db"];
+        }
+
+        folder_redis -> redis [dir=both, style=dashed, label="/data"];
+        worker -> redis [style=dotted];
+        api -> redis [style=dotted];
+        worker -> db [style=dotted];
+        api -> db [style=dotted];
+        port_5432 -> db;
+    }
+
+    // NGINX to App Connections
+    nginx -> api [style=dotted];
+    nginx -> web [style=dotted];
+}
